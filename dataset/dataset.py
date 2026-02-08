@@ -1144,6 +1144,49 @@ class alignCollate_real(alignCollate_syn):
         return images_HR, images_lr, label_strs, _
 
 
+class alignCollate_real_sequence(alignCollate_syn):
+    def __init__(self, imgH=32, imgW=128, down_sample_scale=2, mask=False, num_frames=5):
+        super().__init__(imgH, imgW, down_sample_scale, mask)
+        self.num_frames = num_frames
+    
+    def __call__(self, batch):
+        # batch is a list of tuples: (hr_sequence, lr_sequence, label, metadata)
+        hr_sequences, lr_sequences, label_strs, metadata = zip(*batch)
+        
+        imgH = self.imgH
+        imgW = self.imgW
+        
+        # Transforms for HR and LR
+        transform_hr = resizeNormalize((imgW, imgH), self.mask)
+        transform_lr = resizeNormalize(
+            (imgW // self.down_sample_scale, imgH // self.down_sample_scale), 
+            self.mask
+        )
+        
+        batch_hr_sequences = []
+        batch_lr_sequences = []
+        
+        # Process each sample's sequence
+        for hr_seq, lr_seq in zip(hr_sequences, lr_sequences):
+            # hr_seq and lr_seq are lists of PIL Images (5 frames each)
+            
+            # Transform each frame in HR sequence
+            hr_frames_transformed = [transform_hr(frame) for frame in hr_seq]
+            hr_stacked = torch.stack(hr_frames_transformed)  # [num_frames, C, H, W]
+            batch_hr_sequences.append(hr_stacked)
+            
+            # Transform each frame in LR sequence
+            lr_frames_transformed = [transform_lr(frame) for frame in lr_seq]
+            lr_stacked = torch.stack(lr_frames_transformed)  # [num_frames, C, H, W]
+            batch_lr_sequences.append(lr_stacked)
+        
+        # Stack all sequences in batch
+        images_HR = torch.stack(batch_hr_sequences)  # [batch_size, num_frames, C, H, W]
+        images_lr = torch.stack(batch_lr_sequences)  # [batch_size, num_frames, C, H, W]
+        
+        return images_HR, images_lr, label_strs, metadata
+
+
 class alignCollate_realWTL(alignCollate_syn):
     def __call__(self, batch):
         images_HR, images_lr, label_strs = zip(*batch)
