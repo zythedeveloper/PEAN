@@ -5,8 +5,8 @@
         "log": "logs",
         "tb_logger": "tb_logger",
         "results": "results",
-        "checkpoint": "./ckpt",
-        "resume_state": null
+        "checkpoint": "ckpt",
+        "resume_state": "ckpt/TPEM_final.pth"
     },
     "model": {
         "which_model_G": "sr3", 
