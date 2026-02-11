@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # encoding: utf-8
 
+import json
 import random
 import torch
 from torch.utils.data import Dataset
@@ -22,6 +23,7 @@ sys.path.append('../')
 from utils import str_filt
 from utils.labelmaps import get_vocabulary, labels2strs
 from IPython import embed
+from pathlib import Path
 
 
 from utils import utils_deblur
@@ -1200,14 +1202,8 @@ class alignCollate_real(alignCollate_syn):
 
 
 class alignCollate_real_sequence(alignCollate_syn):
-    def __init__(self, imgH=32, imgW=128, down_sample_scale=2, mask=False, num_frames=5):
-        super().__init__(imgH, imgW, down_sample_scale, mask)
-        self.num_frames = num_frames
-    
     def __call__(self, batch):
-        # batch is a list of tuples: (hr_sequence, lr_sequence, label, metadata)
         hr_sequences, lr_sequences, label_strs, metadata = zip(*batch)
-        
         imgH = self.imgH
         imgW = self.imgW
         
