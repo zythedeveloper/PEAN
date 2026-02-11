@@ -56,6 +56,61 @@ def buf2PIL(txn, key, type='RGB'):
     return im
 
 
+class LRLPRDataset(Dataset):
+    def __init__(self, root_dir, transform=None, is_training=True):
+        self.root_dir = Path(root_dir)
+        self.transform = transform
+        self.is_training = is_training
+        self.samples = []
+
+        for track_path in self.root_dir.rglob('track_*'):
+            if track_path.is_dir():
+                
+                scenario = "Scenario-A" if "Scenario-A" in str(track_path) else "Scenario-B"
+                ext = ".png" if scenario == "Scenario-A" else ".jpg"
+                anno_path = track_path / "annotations.json"
+                label = ""
+                if anno_path.exists():
+                    with open(anno_path, 'r') as f:
+                        label = json.load(f).get('plate_text', "")
+
+                self.samples.append({
+                    'path': track_path, 
+                    'track_id': track_path.name, 
+                    'scenario': scenario, 
+                    'extension': ext,
+                    'label': label
+                })
+        
+        print(f"Loaded {len(self.samples)} tracks. (A: PNG, B: JPG)")
+    
+    def _load_sequence(self, track_path, prefix, ext, num_frames=5):
+        frames = []
+        for i in range(1, num_frames + 1):
+            img_path = track_path / f"{prefix}-{i:03d}{ext}"                
+            img = Image.open(img_path).convert('RGB')
+            frames.append(img)
+        return frames
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        sample_info = self.samples[idx]
+        track_path = sample_info['path']
+        ext = sample_info['extension']
+        label = sample_info["label"]
+        lr_seq = self._load_sequence(track_path, "lr", ext)
+        hr_seq = self._load_sequence(track_path, "hr", ext) if self.is_training else torch.tensor([])
+
+        metadata = {
+            "scenario": sample_info['scenario'],
+            "track_id": sample_info['track_id'],
+        }
+            
+        return hr_seq, lr_seq, label, metadata
+
+
 class lmdbDataset(Dataset):
     def __init__(self, root=None, voc_type='upper', max_len=31, test=True):
         super(lmdbDataset, self).__init__()
