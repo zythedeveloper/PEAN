@@ -81,7 +81,7 @@ class LRLPRTester(base.TextBase):
                     # Note: tensors are typically in [-1, 1] range after transform
                     psnr = self.cal_psnr(sr_tensor, hr_tensor)
                     ssim = self.cal_ssim(sr_tensor, hr_tensor)
-                    metrics['psnr'].append(psnr)
+                    metrics['psnr'].append(psnr.item())
                     metrics['ssim'].append(ssim.item())
 
                 # 3. Multi-Frame Fusion for Recognition
