@@ -6,7 +6,8 @@ CURRENT_DIR = Path(__file__).parent.parent
 DATASET_DIR = os.path.join(CURRENT_DIR, "dataset")
 MODELS_DIR = os.path.join(CURRENT_DIR, "models")
 NOTEBOOKS_DIR = os.path.join(CURRENT_DIR, "notebooks")
-WEIGHTS_DIR = os.path.join(CURRENT_DIR, "weights")
+LOGS_DIR = os.path.join(CURRENT_DIR, "runs")
+CKPT_DIR = os.path.join(CURRENT_DIR, "ckpt")
 
 
 def set_seed(seed):
