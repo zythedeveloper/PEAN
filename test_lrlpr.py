@@ -1,16 +1,13 @@
-import torch
-import os
-import argparse
-import yaml
+import torch, os, argparse, yaml
 import numpy as np
+from datetime import datetime
 from tqdm import tqdm
-from PIL import Image
-from torchvision import transforms
-
+from torch.utils.tensorboard import SummaryWriter
 from interfaces import base
 from dataset.dataset import LRLPRDataset, alignCollate_real_sequence
 from utils.util import str_filt
 from utils.metrics import get_str_list
+from utils.utils import LOGS_DIR
 from easydict import EasyDict
 import warnings
 warnings.filterwarnings("ignore")
@@ -33,6 +30,12 @@ class LRLPRTester(base.TextBase):
         aster, aster_info = self.Aster_init()
         aster.eval()
 
+        # setup tensorboard
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        LOG_DIR = os.path.join(LOGS_DIR, f'experiment_{timestamp}')
+        writer = SummaryWriter(LOG_DIR)
+        print(f"TensorBoard logging to: {LOG_DIR}")
+
         # 2. Setup Dataset (is_training=True loads GT HR frames)
         dataset = LRLPRDataset(root_dir=self.args.test_data_dir, is_training=True)
         test_loader = torch.utils.data.DataLoader(
@@ -53,7 +56,8 @@ class LRLPRTester(base.TextBase):
         print(f"Validating PEAN on LRLPR Train Split: {len(dataset)} tracks")
 
         with torch.no_grad():
-            for i, (hr_batch, lr_batch, label_gt, metadata) in enumerate(tqdm(test_loader)):
+            batch_iterator = tqdm(test_loader)
+            for i, (hr_batch, lr_batch, label_gt, metadata) in enumerate(batch_iterator):
                 sr_frames = []
                 lr_seq = lr_batch.squeeze(0) 
                 hr_seq = hr_batch.squeeze(0)
@@ -99,6 +103,19 @@ class LRLPRTester(base.TextBase):
                     metrics['n_correct'] += 1
                 
                 metrics['total'] += 1
+
+                # calculate average metrics
+                avg_psnr = np.mean(metrics['psnr'])
+                avg_ssim = np.mean(metrics['ssim'])
+                accuracy = metrics['n_correct'] / metrics['total']
+
+                # log the metrics into TensorBoard
+                writer.add_scalar('Metrics/PSNR', avg_psnr, i)
+                writer.add_scalar('Metrics/SSIM', avg_ssim, i)
+                writer.add_scalar('Metrics/Accuracy', accuracy * 100, i)
+
+                # update progress bar
+                batch_iterator.set_postfix(accuracy=f"{accuracy:.4f}")
 
         # 5. Final Report
         avg_psnr = np.mean(metrics['psnr'])
